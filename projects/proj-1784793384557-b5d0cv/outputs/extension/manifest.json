@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "服装资产库 · 反推助手",
+  "version": "0.1.0",
+  "description": "看到好看的穿搭，一键保存并反推服装提示词（三档）。侧边栏挤占不遮挡网页。",
+  "permissions": ["sidePanel", "contextMenus", "storage", "scripting", "activeTab", "tabs"],
+  "host_permissions": ["<all_urls>", "http://127.0.0.1/*"],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": { "default_title": "服装资产库（点击开关侧边栏）" },
+  "side_panel": { "default_path": "sidepanel.html" },
+  "commands": {
+    "toggle-panel": {
+      "suggested_key": { "default": "Alt+Shift+S" },
+      "description": "唤醒/关闭 服装资产库侧边栏"
+    }
+  }
+}

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>服装资产库</title>
+  <link rel="stylesheet" href="library.css" />
+</head>
+<body>
+  <aside class="side">
+    <div class="logo">服装资产库</div>
+    <input id="search" class="search" placeholder="搜索提示词 / 标签…" />
+    <nav class="nav">
+      <div class="nav-title">大类</div>
+      <div id="catNav" class="nav-list"></div>
+      <div class="nav-title">标签</div>
+      <div id="tagNav" class="nav-list tagcloud"></div>
+    </nav>
+    <div class="side-foot"><span id="count">0</span> 项资产</div>
+  </aside>
+
+  <main class="main">
+    <header class="top">
+      <div id="crumb" class="crumb">全部资产</div>
+      <div class="top-actions">
+        <select id="modeFilter" class="mini-sel">
+          <option value="">全部档位</option>
+          <option value="clothing_only">纯服装</option>
+          <option value="with_model">带模特</option>
+          <option value="ghost_mannequin">假人展示</option>
+        </select>
+      </div>
+    </header>
+    <div id="grid" class="grid"></div>
+    <div id="empty" class="empty-state hidden">暂无资产，去侧边栏保存第一张吧</div>
+  </main>
+
+  <!-- 详情弹窗 -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-mask"></div>
+    <div class="modal-box">
+      <button id="modalClose" class="modal-close">×</button>
+      <div class="modal-grid">
+        <div class="modal-img"><img id="mImg" src="" alt="" /></div>
+        <div class="modal-info">
+          <div class="mi-row"><span id="mCat" class="badge"></span><span id="mDate" class="muted"></span></div>
+          <div id="mTags" class="tags"></div>
+          <div id="mPrompts"></div>
+          <div class="modal-actions">
+            <a id="mSource" class="btn ghost" target="_blank">原页面</a>
+            <button id="mDelete" class="btn danger">删除</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="lib/db.js"></script>
+  <script src="library.js"></script>
+</body>
+</html>

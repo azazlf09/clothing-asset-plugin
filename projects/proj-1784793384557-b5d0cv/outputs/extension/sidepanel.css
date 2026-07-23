@@ -1,0 +1,64 @@
+:root{
+  --bg:#f5f5f7; --card:#fff; --ink:#1d1d1f; --sub:#86868b; --line:#e3e3e6;
+  --brand:#4f46e5; --brand-ink:#fff; --ok:#34c759; --bad:#ff3b30; --radius:12px;
+}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.5 -apple-system,"SF Pro SC","PingFang SC",system-ui,sans-serif;
+  background:var(--bg);color:var(--ink);min-width:320px}
+.bar{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;
+  padding:10px 14px;background:rgba(245,245,247,.8);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.brand{font-weight:600;font-size:15px}
+.right{display:flex;align-items:center;gap:8px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--sub)}
+.dot.ok{background:var(--ok)} .dot.bad{background:var(--bad)}
+main{padding:12px;display:flex;flex-direction:column;gap:12px}
+.card{background:var(--card);border-radius:var(--radius);padding:12px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.lbl{display:block;font-size:12px;color:var(--sub);margin:0 0 6px;font-weight:500}
+.lbl.mt{margin-top:12px}
+.sub{color:var(--sub);font-weight:400}
+.row{display:flex;align-items:center}
+.gap{gap:8px}
+.mt{margin-top:8px}
+.block{width:100%}
+.center{text-align:center}
+.left{text-align:left}
+
+.preview{width:100%;aspect-ratio:3/4;max-height:260px;border-radius:10px;overflow:hidden;
+  background:#fafafa;border:1px dashed var(--line);display:flex;align-items:center;justify-content:center}
+.preview img{width:100%;height:100%;object-fit:contain}
+.preview.empty .hint{color:var(--sub);font-size:12px;text-align:center;line-height:1.7}
+
+button{font:inherit;border:none;border-radius:9px;padding:9px 12px;cursor:pointer;transition:.15s}
+button:disabled{opacity:.45;cursor:not-allowed}
+.primary{background:var(--brand);color:var(--brand-ink);font-weight:500}
+.primary:hover:not(:disabled){filter:brightness(1.08)}
+.secondary{background:#eceafd;color:var(--brand);font-weight:500}
+.ghost{background:transparent;color:var(--brand)}
+.ghost:hover{background:#f0f0f3}
+.small{padding:6px 10px}
+.save{margin-top:2px}
+
+.segmented{display:flex;background:#f0f0f3;border-radius:9px;padding:3px;gap:2px;margin-bottom:10px}
+.seg{flex:1;background:transparent;color:var(--ink);padding:7px 4px;font-size:12.5px;border-radius:7px}
+.seg.on{background:#fff;color:var(--brand);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.langOpt{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--sub);margin:0 0 10px;cursor:pointer;user-select:none}
+.langOpt input{margin:0;cursor:pointer}
+
+.inp,.sel,.prompt{width:100%;border:1px solid var(--line);border-radius:9px;padding:8px 10px;
+  font:inherit;color:var(--ink);background:#fff}
+.inp:focus,.sel:focus,.prompt:focus{outline:none;border-color:var(--brand)}
+.prompt{resize:vertical;margin-top:8px;line-height:1.55}
+.sel{flex:1}
+
+.status{font-size:12px;color:var(--sub);min-height:16px;margin-top:6px}
+.status.err{color:var(--bad)} .status.ok{color:var(--ok)}
+
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.tag{padding:4px 10px;border-radius:14px;font-size:12px;cursor:pointer;border:1px solid var(--line);background:#fff}
+.tags.suggest .tag{color:var(--sub);border-style:dashed}
+.tags.suggest .tag:hover{color:var(--brand);border-color:var(--brand)}
+.tags.chosen .tag{background:var(--brand);color:#fff;border-color:var(--brand)}
+.tags.chosen .tag .x{margin-left:5px;opacity:.8}
+
+.settings{margin-top:10px}
+.hidden{display:none}

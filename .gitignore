@@ -1,0 +1,34 @@
+# 依赖
+node_modules/
+package-lock.json
+
+# 素材包（大文件，95MB，不入库）
+素材包/
+
+# 对话历史（本地记录，不入库）
+conversations/
+
+# 项目工作区里的运行时状态（记忆/临时输出/任务队列）
+projects/*/memory/
+projects/*/.state/
+projects/*/logs/
+
+# 系统 & 编辑器
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 日志与临时文件
+*.log
+*.tmp
+tmp/
+temp/
+
+# 秘钥与本地配置
+.env
+.env.local
+*.key

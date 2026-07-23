@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>服装资产库</title>
+  <link rel="stylesheet" href="sidepanel.css" />
+</head>
+<body>
+  <header class="bar">
+    <div class="brand">服装资产库</div>
+    <div class="right">
+      <span id="serverDot" class="dot" title="反推服务状态"></span>
+      <button id="openLib" class="ghost">资产库</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="card">
+      <div id="preview" class="preview empty">
+        <span class="hint">右键网页图片「反推此服装」<br/>或点下方按钮从页面选图</span>
+      </div>
+      <div class="row gap">
+        <button id="pickBtn" class="secondary">从页面选图</button>
+        <button id="clearBtn" class="ghost">清空</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <label class="lbl">反推档位</label>
+      <div id="modes" class="segmented">
+        <button class="seg on" data-mode="clothing_only">纯服装</button>
+        <button class="seg" data-mode="with_model">带模特</button>
+        <button class="seg" data-mode="ghost_mannequin">假人展示</button>
+      </div>
+      <label class="langOpt">
+        <input type="checkbox" id="langZh" />
+        <span>输出纯中文提示词</span>
+      </label>
+      <button id="reasonBtn" class="primary block" disabled>反推提示词</button>
+      <div id="reasonStatus" class="status"></div>
+      <textarea id="promptText" class="prompt" placeholder="反推结果将显示在这里，可编辑…" rows="6"></textarea>
+    </section>
+
+    <section class="card">
+      <label class="lbl">大类</label>
+      <div class="row gap">
+        <select id="categorySel" class="sel"></select>
+        <input id="newCatInput" class="inp" placeholder="新增大类变量…" />
+        <button id="addCatBtn" class="ghost small">+</button>
+      </div>
+
+      <label class="lbl mt">标签 <span class="sub">(可多选，Eagle式)</span></label>
+      <div id="chosenTags" class="tags chosen"></div>
+      <div class="row gap">
+        <input id="tagInput" class="inp" placeholder="输入标签回车添加…" />
+      </div>
+      <div id="suggestTags" class="tags suggest"></div>
+    </section>
+
+    <button id="saveBtn" class="primary block save" disabled>保存到资产库</button>
+    <div id="saveStatus" class="status center"></div>
+
+    <section class="card">
+      <button id="toggleSettings" class="ghost block left">⚙ 反推引擎设置</button>
+      <div id="settings" class="settings hidden">
+        <label class="lbl">Provider</label>
+        <select id="provSel" class="sel block">
+          <option value="cli">本地 Claude CLI</option>
+          <option value="openai">OpenAI 兼容</option>
+          <option value="anthropic">Anthropic</option>
+          <option value="gemini">Gemini</option>
+        </select>
+        <div id="remoteCfg" class="hidden">
+          <input id="cfgBase" class="inp block mt" placeholder="baseURL" />
+          <input id="cfgKey" class="inp block mt" placeholder="apiKey" type="password" />
+          <input id="cfgModel" class="inp block mt" placeholder="model" />
+        </div>
+        <input id="cfgCliModel" class="inp block mt" placeholder="CLI model(可空，默认)" />
+        <button id="saveCfg" class="secondary block mt">保存设置</button>
+        <div id="cfgStatus" class="status center"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="lib/db.js"></script>
+  <script src="lib/reason.js"></script>
+  <script src="sidepanel.js"></script>
+</body>
+</html>

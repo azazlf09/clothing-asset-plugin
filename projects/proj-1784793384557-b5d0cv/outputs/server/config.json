@@ -1,0 +1,8 @@
+{
+  "provider": "cli",
+  "port": 8787,
+  "cli": { "model": "" },
+  "openai": { "baseURL": "https://api.openai.com/v1", "apiKey": "", "model": "gpt-4o-mini" },
+  "anthropic": { "baseURL": "https://api.anthropic.com", "apiKey": "", "model": "claude-3-5-sonnet-latest" },
+  "gemini": { "baseURL": "https://generativelanguage.googleapis.com", "apiKey": "", "model": "gemini-1.5-flash" }
+}

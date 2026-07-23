@@ -1,0 +1,10 @@
+{
+  "name": "clothing-asset-reason-server",
+  "version": "0.1.0",
+  "description": "服装资产库插件 · 本地反推适配层(CLI/OpenAI兼容/Anthropic/Gemini)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "license": "MIT"
+}
