@@ -221,6 +221,17 @@
   - 删除根下空壳 `extension/` 目录，避免后续继续误加载。
 - **正确加载路径**：`C:\Users\Administrator\Documents\claude\服装资产库插件\服装资产库插件\projects\proj-1784793384557-b5d0cv\outputs\extension\`
 
+### M6 · Git 版本管理（2026-07-23）
+
+- **仓库根**：`服装资产库插件/服装资产库插件/`（独立仓库，与父级 `Documents/claude/` monorepo 解耦）
+- **默认分支**：`main`
+- **首个提交**：`82539ea chore: 初始化服装资产库插件仓库` · 21 文件入库
+- **入库范围**：`PROJECT.md` / `README.md` / `.gitignore` / `projects/proj-*/outputs/`（含 server + extension + PROMPT_SPEC.md）
+- **排除入库**：`素材包/`（95MB 图片资源，本地留存）· `conversations/`（对话历史）· `node_modules/` · `memory/` · IDE/系统临时文件
+- **敏感数据核查**：`config.json` 中所有 apiKey 字段为空字符串 ✓，无密钥泄漏
+- **新增文档**：`README.md`（快速启动 + 项目结构导览）
+- **远程仓库**：暂未推送，待用户提供地址
+
 ---
 
 ## 九、工作约定（本项目）
