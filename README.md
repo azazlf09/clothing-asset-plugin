@@ -26,11 +26,19 @@
 ## 快速启动
 
 **1. 启动本地反推 server**
+
+推荐（一次安装，开机自动后台启动，无需再手动敲命令）：
+```
+双击运行 projects/proj-1784793384557-b5d0cv/outputs/server/scripts/install-autostart.bat
+```
+它会把静默启动脚本注册进 Windows 启动文件夹，并立即启动一次。以后每次开机 server 自动在后台运行（无黑框）。卸载运行同目录 `uninstall-autostart.bat`。
+
+手动方式（临时用）：
 ```bash
 cd projects/proj-1784793384557-b5d0cv/outputs/server
 node server.js
 ```
-默认监听 `127.0.0.1:8787`，provider=cli（走本地 claude CLI）。
+默认监听 `127.0.0.1:8787`，provider=cli（走本地 claude CLI）。若侧边栏顶部出现橙色「本地反推服务未启动」横条，说明 server 没跑，点横条里的「重试连接」或运行上面的 bat 即可。
 
 **2. 加载扩展**
 Chrome 扩展页 → 加载已解压的扩展程序 → 选择：

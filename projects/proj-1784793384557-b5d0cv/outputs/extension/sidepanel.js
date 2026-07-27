@@ -18,9 +18,16 @@ async function init() {
 async function checkServer() {
   const h = await CloReason.health();
   const dot = $("serverDot");
+  const banner = $("serverBanner");
   dot.classList.remove("ok", "bad");
-  if (h.ok) { dot.classList.add("ok"); dot.title = "反推服务在线 · " + h.provider; }
-  else { dot.classList.add("bad"); dot.title = "反推服务未启动（请运行 server）"; }
+  if (h.ok) {
+    dot.classList.add("ok"); dot.title = "反推服务在线 · " + h.provider;
+    if (banner) banner.classList.add("hidden");
+  } else {
+    dot.classList.add("bad"); dot.title = "反推服务未启动";
+    if (banner) banner.classList.remove("hidden");
+  }
+  return h.ok;
 }
 
 // ---------- 取图 ----------
@@ -75,6 +82,8 @@ async function doReason() {
   } catch (e) {
     clearInterval(timer);
     setStatus("reasonStatus", "反推失败：" + e.message, true);
+    // 失败可能是 server 掉线，复查一次以弹出顶部横条引导
+    checkServer();
   } finally {
     $("reasonBtn").disabled = false;
     updateSaveBtn();
@@ -231,6 +240,15 @@ function bind() {
     if (v && !state.chosen.includes(v)) { state.chosen.push(v); renderChosen(); }
     e.target.value = "";
   });
+  const bRetry = $("bannerRetry");
+  if (bRetry) bRetry.onclick = async () => {
+    bRetry.textContent = "连接中…"; bRetry.disabled = true;
+    const ok = await checkServer();
+    bRetry.textContent = "重试连接"; bRetry.disabled = false;
+    if (!ok) { const hb = $("bannerHelpBox"); if (hb) hb.classList.remove("hidden"); }
+  };
+  const bHelp = $("bannerHelp");
+  if (bHelp) bHelp.onclick = () => { const hb = $("bannerHelpBox"); if (hb) hb.classList.toggle("hidden"); };
   $("toggleSettings").onclick = () => $("settings").classList.toggle("hidden");
   $("provSel").onchange = (e) => toggleRemote(e.target.value);
   $("saveCfg").onclick = saveConfig;

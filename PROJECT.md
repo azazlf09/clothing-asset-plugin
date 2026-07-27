@@ -232,6 +232,24 @@
 - **新增文档**：`README.md`（快速启动 + 项目结构导览）
 - **远程仓库**：暂未推送，待用户提供地址
 
+### M7 · 反推服务开机自启动（2026-07-27）
+
+- **痛点**：每次开机/重启后 server 未运行，用户必须手动 `node server.js` 才能反推，否则点反推报"反推失败"，插件失去实用性。
+- **技术约束**：Chrome MV3 扩展运行在沙箱中，**无法唤起本地进程**，因此"点反推才启动 server"这条路走不通。改用 **Windows 开机自启 + 后台常驻**，让 server 在登录时已在跑。
+- **交付脚本**（`outputs/server/scripts/`）：
+  - `start-hidden.vbs` — 无窗口静默拉起 `node server.js`（`WScript.Shell.Run cmd,0,False`）。**纯 ASCII 编写**（关键：wscript 按系统 ANSI/GBK 解码 .vbs，含中文注释会导致解析崩溃、静默失败）；路径用 `WScript.ScriptFullName` 动态推导，规避中文路径编码问题。
+  - `install-autostart.bat` — 一键把 vbs 快捷方式写入 Windows 启动文件夹（`shell:startup`），并立即启动一次 + 探测 `/health`。用 PowerShell 的 `WScript.Shell.CreateShortcut` 建快捷方式（对中文路径可靠）。
+  - `uninstall-autostart.bat` — 移除自启动项。
+- **踩坑记录**：
+  1. 第一版 vbs 用 `cmd /c cd /d "中文路径" && node`——中文路径 + 嵌套引号在 vbs→cmd 传递时被打断，失败。改为 `shell.CurrentDirectory` + 直接 Run node。
+  2. vbs 含中文注释 + UTF-8 编码 → wscript 用 GBK 解析时崩溃（现象：wscript 进程挂起、node 不启动）。改为纯 ASCII 后解决。
+- **侧边栏兜底**（`sidepanel.*`）：打开时 ping `/health`，未就绪则顶部弹**橙色横条**"本地反推服务未启动"，含「重试连接」+「如何开启」（引导运行 install-autostart.bat）；反推失败时自动复查并弹横条。
+- **验证**：
+  - 自启动 vbs（wscript 触发，等同开机）→ `/health` `{"ok":true}`，仅 1 个常驻 node、无挂起 wscript ✓
+  - 启动项快捷方式已写入 `Startup` 文件夹 ✓
+  - 全链路真实素材反推：`HTTP 200 / ok:true / category:female / 17.9s`，提示词与标签正确 ✓
+- **用户操作**：双击运行一次 `outputs/server/scripts/install-autostart.bat`，此后开机自动后台启动，无需再手动敲命令。
+
 ---
 
 ## 九、工作约定（本项目）

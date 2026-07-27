@@ -15,6 +15,20 @@
     </div>
   </header>
 
+  <div id="serverBanner" class="banner hidden">
+    <div class="banner-msg">⚠ 本地反推服务未启动</div>
+    <div class="banner-actions">
+      <button id="bannerRetry" class="ghost small">重试连接</button>
+      <button id="bannerHelp" class="ghost small">如何开启</button>
+    </div>
+    <div id="bannerHelpBox" class="banner-help hidden">
+      已安装开机自启的话，重启电脑即自动运行。<br/>
+      若未安装，请双击运行一次：<br/>
+      <code>server\scripts\install-autostart.bat</code><br/>
+      （安装后开机自动后台启动，无需再手动操作）
+    </div>
+  </div>
+
   <main>
     <section class="card">
       <div id="preview" class="preview empty">
