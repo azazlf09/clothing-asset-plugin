@@ -68,6 +68,44 @@ function setImage(dataUrl) {
   $("reasonBtn").disabled = false;
   updateSaveBtn();
 }
+// 提示词区两个按钮（复制/清除）只在有内容时可用
+function updatePromptActions() {
+  const has = !!$("promptText").value.trim();
+  const cp = $("copyPromptBtn"), cl = $("clearPromptBtn");
+  if (cp) cp.disabled = !has;
+  if (cl) cl.disabled = !has;
+}
+async function copyPrompt() {
+  const txt = $("promptText").value.trim();
+  if (!txt) return;
+  const ok = await copyTextToClipboard(txt);
+  setStatus("reasonStatus", ok ? "已复制到剪贴板 ✓" : "复制失败", !ok, ok);
+}
+// 通用复制：优先 clipboard API，失败走隐藏 textarea 选中复制兜底
+async function copyTextToClipboard(txt) {
+  if (!txt) return false;
+  try {
+    await navigator.clipboard.writeText(txt);
+    return true;
+  } catch {
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = txt;
+      ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.focus(); ta.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      return ok;
+    } catch { return false; }
+  }
+}
+function clearPrompt() {
+  $("promptText").value = "";
+  updatePromptActions();
+  updateSaveBtn();
+  setStatus("reasonStatus", "提示词已清除");
+}
 function clearAll() {
   state.image = ""; state.srcUrl = ""; state.pageUrl = "";
   state.chosen = []; state.suggested = [];
@@ -75,7 +113,7 @@ function clearAll() {
   pv.innerHTML = '<span class="hint">右键网页图片「反推此服装」<br/>或点下方按钮从页面选图</span>';
   $("promptText").value = ""; $("reasonBtn").disabled = true;
   renderChosen(); renderSuggest(); setStatus("reasonStatus", ""); setStatus("saveStatus", "");
-  updateSaveBtn();
+  updateSaveBtn(); updatePromptActions();
 }
 
 // ---------- 单张反推 ----------
@@ -92,6 +130,7 @@ async function doReason() {
     const r = await CloReason.reason(state.image, state.mode, lang, tagLang);
     clearInterval(timer);
     $("promptText").value = r.prompt || "";
+    updatePromptActions();
     if (r.category) $("categorySel").value = r.category;
     state.suggested = r.suggestedTags || [];
     renderSuggest();
@@ -269,6 +308,7 @@ function updateBatchCounters() {
   $("batchDone").textContent = String(batch.items.filter((i) => i.status === "done" || i.status === "saved").length);
   const anyDone = batch.items.some((i) => (i.status === "done" || i.status === "saved") && !i.saved && (i.prompt || "").trim());
   $("batchSaveAll").disabled = !anyDone;
+  updateBatchPromptActions();
 }
 function renderCard(it, idx) {
   const card = document.createElement("div");
@@ -287,6 +327,10 @@ function renderCard(it, idx) {
       </div>
     </div>
     <textarea class="bcard-prompt ${it.prompt ? '' : 'hidden'}" rows="4" placeholder="反推结果">${escapeHtml(it.prompt)}</textarea>
+    <div class="bcard-prompt-actions ${it.prompt ? '' : 'hidden'}">
+      <button data-role="copy" class="secondary">复制提示词</button>
+      <button data-role="clear" class="secondary">清除提示词</button>
+    </div>
     <div class="bcard-tags"></div>
     <div class="bcard-btns">
       <button data-role="reason" class="primary">${it.status === 'done' || it.status === 'saved' ? '重新反推' : '反推'}</button>
@@ -321,10 +365,24 @@ function renderCard(it, idx) {
   card.querySelector(".bcard-prompt").oninput = (e) => {
     it.prompt = e.target.value;
     if (it.saved) { it.saved = false; renderBatch(); }
-    else $("batchSaveAll").disabled = !batch.items.some((i) => (i.prompt || "").trim() && !i.saved);
+    else { $("batchSaveAll").disabled = !batch.items.some((i) => (i.prompt || "").trim() && !i.saved); updateBatchPromptActions(); }
   };
   card.querySelector('[data-role="reason"]').onclick = () => { it.mode = state.mode; reasonOne(it); };
   card.querySelector('[data-role="save"]').onclick = () => saveOne(it);
+  card.querySelector('[data-role="copy"]').onclick = async (e) => {
+    const txt = (it.prompt || "").trim();
+    if (!txt) return;
+    const ok = await copyTextToClipboard(txt);
+    const btn = e.currentTarget;
+    const old = btn.textContent;
+    btn.textContent = ok ? "已复制 ✓" : "复制失败";
+    setTimeout(() => { btn.textContent = old; }, 1200);
+  };
+  card.querySelector('[data-role="clear"]').onclick = () => {
+    it.prompt = "";
+    if (it.saved) it.saved = false;
+    renderBatch();
+  };
   return card;
 }
 function optionsHtml(sel) {
@@ -433,6 +491,34 @@ async function saveAll() {
   setStatus("batchStatus", `已全部保存 ${done}/${list.length} ✓`, false, true);
   renderBatch();
 }
+// 一键复制所有已反推的提示词（每张之间用分隔线+序号，便于区分哪张对应哪段）
+async function copyAll() {
+  const list = batch.items.filter((i) => (i.prompt || "").trim());
+  if (!list.length) return;
+  const txt = list
+    .map((it, i) => `【#${batch.items.indexOf(it) + 1}】\n${it.prompt.trim()}`)
+    .join("\n\n----------\n\n");
+  const ok = await copyTextToClipboard(txt);
+  setStatus("batchStatus", ok ? `已复制 ${list.length} 张提示词 ✓` : "复制失败", !ok, ok);
+}
+// 一键清除所有卡片的提示词（不动缩略图/标签；已保存的复位为未保存态）
+function clearAllPrompts() {
+  let n = 0;
+  batch.items.forEach((it) => {
+    if ((it.prompt || "").trim()) n++;
+    it.prompt = "";
+    if (it.saved) { it.saved = false; it.status = it.status === "saved" ? "done" : it.status; }
+  });
+  renderBatch();
+  setStatus("batchStatus", n ? `已清除 ${n} 张提示词` : "无提示词可清除");
+}
+// 批量顶部两个全局按钮的可用态：有任一张已反推出提示词才可用
+function updateBatchPromptActions() {
+  const has = batch.items.some((i) => (i.prompt || "").trim());
+  const cp = $("batchCopyAll"), cl = $("batchClearAll");
+  if (cp) cp.disabled = !has;
+  if (cl) cl.disabled = !has;
+}
 
 // ---------- 设置 ----------
 async function loadConfigUI() {
@@ -512,7 +598,9 @@ function bind() {
       });
     }
   } catch {}
-  $("promptText").addEventListener("input", updateSaveBtn);
+  $("promptText").addEventListener("input", () => { updateSaveBtn(); updatePromptActions(); });
+  $("copyPromptBtn").onclick = copyPrompt;
+  $("clearPromptBtn").onclick = clearPrompt;
   $("saveBtn").onclick = save;
   $("clearBtn").onclick = clearAll;
   $("openLib").onclick = () => chrome.tabs.create({ url: chrome.runtime.getURL("library.html") });
@@ -551,6 +639,8 @@ function bind() {
 
   // 批量
   $("batchReasonAll").onclick = reasonAll;
+  $("batchCopyAll").onclick = copyAll;
+  $("batchClearAll").onclick = clearAllPrompts;
   $("batchSaveAll").onclick = saveAll;
   $("batchExit").onclick = exitBatch;
   $("batchAdd").onclick = () => {

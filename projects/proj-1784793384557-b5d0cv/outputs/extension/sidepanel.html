@@ -61,6 +61,10 @@
         <button id="reasonBtn" class="primary block" disabled>反推提示词</button>
         <div id="reasonStatus" class="status"></div>
         <textarea id="promptText" class="prompt" placeholder="反推结果将显示在这里，可编辑…" rows="6"></textarea>
+        <div class="row gap prompt-actions">
+          <button id="copyPromptBtn" class="secondary" disabled>复制提示词</button>
+          <button id="clearPromptBtn" class="ghost" disabled>清除提示词</button>
+        </div>
       </div>
     </section>
 
@@ -70,6 +74,8 @@
         <div class="cnt">批量：<em id="batchCnt">0</em>张 · 完成<em id="batchDone">0</em></div>
         <div class="batch-actions">
           <button id="batchReasonAll" class="primary">一键反推</button>
+          <button id="batchCopyAll" class="secondary" disabled>一键复制提示词</button>
+          <button id="batchClearAll" class="ghost small" disabled>一键清除提示词</button>
           <button id="batchSaveAll" class="secondary" disabled>全部保存</button>
           <button id="batchAdd" class="ghost small">+加图</button>
           <button id="batchExit" class="ghost small">退出</button>

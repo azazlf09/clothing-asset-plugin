@@ -48,6 +48,9 @@ button:disabled{opacity:.45;cursor:not-allowed}
   font:inherit;color:var(--ink);background:#fff}
 .inp:focus,.sel:focus,.prompt:focus{outline:none;border-color:var(--brand)}
 .prompt{resize:vertical;margin-top:8px;line-height:1.55}
+.prompt-actions{margin-top:8px}
+.prompt-actions button{flex:1}
+.prompt-actions button:disabled{opacity:.45;cursor:not-allowed}
 .sel{flex:1}
 
 .status{font-size:12px;color:var(--sub);min-height:16px;margin-top:6px}
@@ -104,6 +107,9 @@ button:disabled{opacity:.45;cursor:not-allowed}
   color:var(--ink);background:#fff;resize:vertical;line-height:1.5;margin-top:6px;font-size:12.5px}
 .bcard-prompt:focus{outline:none;border-color:var(--brand)}
 .bcard-prompt.hidden{display:none}
+.bcard-prompt-actions{display:flex;gap:6px;margin-top:6px}
+.bcard-prompt-actions button{flex:1;padding:4px 8px;font-size:11px;border-radius:7px}
+.bcard-prompt-actions.hidden{display:none}
 .bcard-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
 .bcard-tags .tag{padding:2px 8px;border-radius:12px;font-size:11px;cursor:pointer;
   border:1px solid var(--line);background:#fff}
