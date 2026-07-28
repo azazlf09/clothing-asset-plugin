@@ -250,6 +250,22 @@
   - 全链路真实素材反推：`HTTP 200 / ok:true / category:female / 17.9s`，提示词与标签正确 ✓
 - **用户操作**：双击运行一次 `outputs/server/scripts/install-autostart.bat`，此后开机自动后台启动，无需再手动敲命令。
 
+### M8 · 使用教程 + 分发包（2026-07-28）✅
+- **产物**：
+  - `outputs/使用教程.md` / `outputs/使用教程.txt`（面向公司同事的入门文档，含前置依赖检查、三步安装、常见问题）
+  - `projects/proj-1784793384557-b5d0cv/服装资产库插件-v0.1.0.zip`（40KB，含 extension + server + 教程双版本，共 23 文件）
+- **打包踩坑**：PowerShell `Compress-Archive` 用 GBK 存 zip entry 名 → 中文文件名乱码。改用 .NET `System.IO.Compression.ZipFile.CreateFromDirectory` + `System.Text.Encoding.UTF8` 解决。
+- **分发约束**：包内**不含** Claude CLI 账号/额度，使用方必须自行配置 `claude --version` 可用。教程第二节把这条放最显眼位置。
+
+### M9 · 生图路线（2026-07-28）❌ 已回退
+- **决策**：曾实现「反推 + 自动生图」全链路（OpenAI/Stability/Replicate 三家 API 适配 + 两阶段 UI + 库存储扩展），提交为 `90ccd30`。经复盘决定这条路线暂不推进，代码全部 `git reset --hard` 回退到 M7（`1a7144f`）。
+- **保留**：M8 的教程和分发包从 `90ccd30` 单独 `git checkout` 恢复。
+- **可追溯**：M9 代码在 git reflog 中保留（`HEAD@{1}` 或 `90ccd30`），未来若重启该路线可 `git cherry-pick`。
+
+### M10 · 二次入库（2026-07-28）✅
+- **动作**：回退 M9 后重新提交，让 HEAD 干净停在「M7 自启动 + M8 教程与分发包」状态。
+- **入库**：`使用教程.md` / `使用教程.txt` / `服装资产库插件-v0.1.0.zip`（3 文件，从 M9 恢复的 M8 产物）+ PROJECT.md 增量。
+
 ---
 
 ## 九、工作约定（本项目）
