@@ -1,17 +1,33 @@
-// 侧边栏逻辑
+// 侧边栏逻辑：单张 + 批量
 const $ = (id) => document.getElementById(id);
 const state = { image: "", srcUrl: "", pageUrl: "", mode: "clothing_only", chosen: [], suggested: [] };
 const DEFAULT_CATS = [{ value: "female", label: "女装" }, { value: "male", label: "男装" }];
+const MODE_LABEL = { clothing_only: "纯服装", with_model: "带模特", ghost_mannequin: "假人展示", full_scene: "反推全图" };
+function getConcurrency() {
+  const el = document.getElementById("batchConc");
+  const n = el ? parseInt(el.value, 10) : 3;
+  return Number.isFinite(n) && n > 0 ? n : 3;
+}
+
+// 批量态
+const batch = {
+  active: false,
+  items: [], // { id, image, srcUrl, pageUrl, mode, lang, status, prompt, category, categoryLabel, tags, suggested, chosen, tookMs, error, saved }
+  seq: 0,
+};
 
 init();
 async function init() {
   await checkServer();
   await loadCategories();
   await consumePending();
+  await consumeBatch();
   bind();
   await loadConfigUI();
   chrome.storage.onChanged.addListener((c, area) => {
-    if (area === "session" && c.pendingImage) consumePending();
+    if (area !== "session") return;
+    if (c.pendingImage) consumePending();
+    if (c.pendingBatch) consumeBatch();
   });
 }
 
@@ -30,7 +46,7 @@ async function checkServer() {
   return h.ok;
 }
 
-// ---------- 取图 ----------
+// ---------- 单张取图 ----------
 async function consumePending() {
   const { pendingImage } = await chrome.storage.session.get("pendingImage");
   if (!pendingImage) return;
@@ -62,7 +78,7 @@ function clearAll() {
   updateSaveBtn();
 }
 
-// ---------- 反推 ----------
+// ---------- 单张反推 ----------
 async function doReason() {
   if (!state.image) return;
   $("reasonBtn").disabled = true;
@@ -72,7 +88,8 @@ async function doReason() {
   }, 500);
   try {
     const lang = $("langZh") && $("langZh").checked ? "zh" : "en";
-    const r = await CloReason.reason(state.image, state.mode, lang);
+    const tagLang = $("tagZh") ? ($("tagZh").checked ? "zh" : "en") : "zh";
+    const r = await CloReason.reason(state.image, state.mode, lang, tagLang);
     clearInterval(timer);
     $("promptText").value = r.prompt || "";
     if (r.category) $("categorySel").value = r.category;
@@ -82,7 +99,6 @@ async function doReason() {
   } catch (e) {
     clearInterval(timer);
     setStatus("reasonStatus", "反推失败：" + e.message, true);
-    // 失败可能是 server 掉线，复查一次以弹出顶部横条引导
     checkServer();
   } finally {
     $("reasonBtn").disabled = false;
@@ -90,7 +106,7 @@ async function doReason() {
   }
 }
 
-// ---------- 标签 ----------
+// ---------- 单张标签 ----------
 function renderSuggest() {
   const box = $("suggestTags");
   box.innerHTML = "";
@@ -124,6 +140,7 @@ async function loadCategories() {
     o.value = c.value; o.textContent = c.label;
     sel.appendChild(o);
   });
+  return cats;
 }
 async function addCategory() {
   const v = $("newCatInput").value.trim();
@@ -138,7 +155,7 @@ async function addCategory() {
   $("categorySel").value = value;
 }
 
-// ---------- 保存 ----------
+// ---------- 单张保存 ----------
 function updateSaveBtn() {
   $("saveBtn").disabled = !(state.image && $("promptText").value.trim());
 }
@@ -151,12 +168,11 @@ async function save() {
     const thumb = await CloReason.makeThumb(state.image);
     const sel = $("categorySel");
     await CloDB.add({
-      image: state.image,
-      thumb,
-      srcUrl: state.srcUrl,
-      pageUrl: state.pageUrl,
+      image: state.image, thumb,
+      srcUrl: state.srcUrl, pageUrl: state.pageUrl,
       category: sel.value,
       categoryLabel: sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : sel.value,
+      mode: state.mode,
       prompts: { [state.mode]: promptText },
       tags: state.chosen.slice(),
     });
@@ -167,6 +183,255 @@ async function save() {
   } finally {
     $("saveBtn").disabled = false;
   }
+}
+
+// ---------- 批量模式 ----------
+async function consumeBatch() {
+  const { pendingBatch } = await chrome.storage.session.get("pendingBatch");
+  if (!pendingBatch || !pendingBatch.items || !pendingBatch.items.length) return;
+  await chrome.storage.session.remove("pendingBatch");
+  const lang = $("langZh") && $("langZh").checked ? "zh" : "en";
+  const cats = await loadCategories();
+  const defaultCat = cats[0] || { value: "female", label: "女装" };
+  // 已存在图片的 srcUrl 集合，用于去重（同一张 hover chip 连点也不会重复）
+  const existSrc = new Set(batch.items.map((i) => i.srcUrl).filter(Boolean));
+  const existImg = new Set(batch.items.map((i) => i.image).filter(Boolean));
+  let added = 0;
+  // 逐项拉像素（失败的用 srcUrl 兜底）
+  for (const it of pendingBatch.items) {
+    let dataUrl = it.dataUrl || "";
+    if (!dataUrl && it.srcUrl) {
+      try { dataUrl = await CloReason.urlToDataUrl(it.srcUrl); } catch {}
+    }
+    if (!dataUrl) continue;
+    if (it.srcUrl && existSrc.has(it.srcUrl)) continue;
+    if (existImg.has(dataUrl)) continue;
+    existSrc.add(it.srcUrl || ""); existImg.add(dataUrl);
+    batch.items.push({
+      id: "b" + (++batch.seq),
+      image: dataUrl,
+      srcUrl: it.srcUrl || "",
+      pageUrl: it.pageUrl || pendingBatch.pageUrl || "",
+      mode: state.mode,
+      lang,
+      status: "pending", // pending / running / done / err / saved
+      prompt: "", category: defaultCat.value, categoryLabel: defaultCat.label,
+      suggested: [], chosen: [], tookMs: 0, error: "", saved: false,
+    });
+    added++;
+  }
+  if (batch.items.length) {
+    if (!batch.active) enterBatch();
+    else renderBatch();
+    if (added) setStatus("batchStatus", `新加入 ${added} 张 · 共 ${batch.items.length} 张`, false, true);
+  }
+}
+function enterBatch() {
+  batch.active = true;
+  document.querySelectorAll(".single-only").forEach((el) => el.classList.add("hidden"));
+  $("batchWrap").classList.remove("hidden");
+  const el = document.getElementById("batchCurMode");
+  if (el) el.textContent = MODE_LABEL[state.mode] || state.mode;
+  renderBatch();
+}
+function exitBatch() {
+  batch.active = false;
+  batch.items = [];
+  document.querySelectorAll(".single-only").forEach((el) => el.classList.remove("hidden"));
+  $("batchWrap").classList.add("hidden");
+}
+// 全量重建：仅在结构变化时调用（加图/删图/进出批量/切档位/反推完成写回结果）
+function renderBatch() {
+  const list = $("batchList");
+  list.innerHTML = "";
+  batch.items.forEach((it, idx) => list.appendChild(renderCard(it, idx)));
+  updateBatchCounters();
+}
+// 局部刷新：反推进行中定时调用，只更新状态文本/卡片描边，不重建 textarea/tags DOM
+// —— 保住用户在 textarea 里的滚动位置与手动拉伸的高度（修反馈4）
+function refreshCards() {
+  const list = $("batchList");
+  batch.items.forEach((it) => {
+    const card = list.querySelector(`.bcard[data-id="${it.id}"]`);
+    if (!card) return;
+    card.className = "bcard " + (it.status === "running" ? "running" : it.status === "done" || it.status === "saved" ? "done" : it.status === "err" ? "err" : "");
+    const st = card.querySelector(".bcard-state");
+    if (st) {
+      st.textContent = stateText(it);
+      st.classList.toggle("err", it.status === "err");
+      st.classList.toggle("ok", it.status === "saved");
+    }
+  });
+  updateBatchCounters();
+}
+function updateBatchCounters() {
+  $("batchCnt").textContent = String(batch.items.length);
+  $("batchDone").textContent = String(batch.items.filter((i) => i.status === "done" || i.status === "saved").length);
+  const anyDone = batch.items.some((i) => (i.status === "done" || i.status === "saved") && !i.saved && (i.prompt || "").trim());
+  $("batchSaveAll").disabled = !anyDone;
+}
+function renderCard(it, idx) {
+  const card = document.createElement("div");
+  card.className = "bcard " + (it.status === "running" ? "running" : it.status === "done" || it.status === "saved" ? "done" : it.status === "err" ? "err" : "");
+  const catOpts = optionsHtml(it.category);
+  card.innerHTML = `
+    <div class="bcard-top">
+      <div class="bcard-thumb"><img src="${it.image}" alt=""></div>
+      <div class="bcard-main">
+        <div class="bcard-row1">
+          <span class="bcard-idx">#${idx + 1}</span>
+          <select class="bcard-sel" data-role="cat">${catOpts}</select>
+          <button class="bcard-del" title="移除">×</button>
+        </div>
+        <div class="bcard-state ${it.status === 'err' ? 'err' : it.status === 'saved' ? 'ok' : ''}">${stateText(it)}</div>
+      </div>
+    </div>
+    <textarea class="bcard-prompt ${it.prompt ? '' : 'hidden'}" rows="4" placeholder="反推结果">${escapeHtml(it.prompt)}</textarea>
+    <div class="bcard-tags"></div>
+    <div class="bcard-btns">
+      <button data-role="reason" class="primary">${it.status === 'done' || it.status === 'saved' ? '重新反推' : '反推'}</button>
+      <button data-role="save" class="${it.saved ? 'save-ok' : 'secondary'}" ${!it.prompt || it.saved ? 'disabled' : ''}>${it.saved ? '已保存 ✓' : '保存本张'}</button>
+    </div>
+  `;
+  card.dataset.id = it.id;
+  // 标签
+  const tagBox = card.querySelector(".bcard-tags");
+  const uniq = uniqueTags(it);
+  uniq.forEach((t) => {
+    const s = document.createElement("span");
+    s.className = "tag" + (it.chosen.includes(t) ? " on" : "");
+    s.textContent = t;
+    s.onclick = () => {
+      if (it.chosen.includes(t)) it.chosen = it.chosen.filter((x) => x !== t);
+      else it.chosen.push(t);
+      renderBatch();
+    };
+    tagBox.appendChild(s);
+  });
+  // 事件
+  card.querySelector('[data-role="cat"]').onchange = (e) => {
+    it.category = e.target.value;
+    const opt = e.target.options[e.target.selectedIndex];
+    it.categoryLabel = opt ? opt.text : e.target.value;
+  };
+  card.querySelector(".bcard-del").onclick = () => {
+    batch.items = batch.items.filter((x) => x.id !== it.id);
+    if (!batch.items.length) exitBatch(); else renderBatch();
+  };
+  card.querySelector(".bcard-prompt").oninput = (e) => {
+    it.prompt = e.target.value;
+    if (it.saved) { it.saved = false; renderBatch(); }
+    else $("batchSaveAll").disabled = !batch.items.some((i) => (i.prompt || "").trim() && !i.saved);
+  };
+  card.querySelector('[data-role="reason"]').onclick = () => { it.mode = state.mode; reasonOne(it); };
+  card.querySelector('[data-role="save"]').onclick = () => saveOne(it);
+  return card;
+}
+function optionsHtml(sel) {
+  const opts = [];
+  document.querySelectorAll("#categorySel option").forEach((o) => {
+    opts.push(`<option value="${o.value}" ${o.value === sel ? "selected" : ""}>${o.textContent}</option>`);
+  });
+  return opts.join("");
+}
+function stateText(it) {
+  if (it.status === "pending") return "待反推";
+  if (it.status === "running") return `反推中… ${Math.max(0, Math.round((Date.now() - it._t0) / 1000))}s`;
+  if (it.status === "done") return `完成 · ${(it.tookMs / 1000).toFixed(1)}s`;
+  if (it.status === "saved") return "已入库 ✓";
+  if (it.status === "err") return "失败：" + (it.error || "unknown");
+  return "";
+}
+function uniqueTags(it) {
+  const set = new Set([...(it.chosen || []), ...(it.suggested || [])]);
+  return Array.from(set);
+}
+function escapeHtml(s) {
+  return String(s || "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+async function reasonOne(it) {
+  it.status = "running"; it.error = ""; it._t0 = Date.now();
+  // it.mode 由调用方(单卡「反推」/批量「一键反推」)在此之前同步为当前档位
+  // 避免这里再次读 state.mode 导致「运行中切换档位、正在反推的那张跟随变化」的错乱
+  if (!it.mode) it.mode = state.mode;
+  it.lang = $("langZh") && $("langZh").checked ? "zh" : "en";
+  it.tagLang = $("tagZh") ? ($("tagZh").checked ? "zh" : "en") : "zh";
+  renderBatch();
+  // 只做局部刷新（更新计时/状态文本），不重建整表 → 保住其它卡片 textarea 的滚动与拉伸
+  const tick = setInterval(refreshCards, 700);
+  try {
+    const r = await CloReason.reason(it.image, it.mode, it.lang, it.tagLang);
+    it.prompt = r.prompt || "";
+    if (r.category) { it.category = r.category; it.categoryLabel = r.category === "male" ? "男装" : "女装"; }
+    it.suggested = r.suggestedTags || [];
+    it.tookMs = r.tookMs || (Date.now() - it._t0);
+    it.status = "done";
+  } catch (e) {
+    it.status = "err"; it.error = e.message || String(e);
+    checkServer();
+  } finally {
+    clearInterval(tick);
+    renderBatch();
+  }
+}
+
+async function reasonAll() {
+  const pending = batch.items.filter((i) => i.status !== "running" && i.status !== "saved");
+  if (!pending.length) return;
+  // 关键修复：一键反推前把当前档位广播到每张待反推的卡片
+  // 之前 it.mode 是"加入批量的那一刻"固化的,先加图再切档位 → 不会生效
+  pending.forEach((it) => { it.mode = state.mode; });
+  const conc = getConcurrency();
+  $("batchReasonAll").disabled = true;
+  setStatus("batchStatus", `并发 ${conc} · 档位「${MODE_LABEL[state.mode] || state.mode}」反推中…`);
+  const queue = pending.slice();
+  const workers = Array.from({ length: Math.min(conc, queue.length) }, async () => {
+    while (queue.length) {
+      const it = queue.shift();
+      await reasonOne(it);
+    }
+  });
+  await Promise.all(workers);
+  const okCnt = batch.items.filter((i) => i.status === "done").length;
+  const errCnt = batch.items.filter((i) => i.status === "err").length;
+  setStatus("batchStatus", `完成 · 成功 ${okCnt} · 失败 ${errCnt}`, errCnt > 0, errCnt === 0);
+  $("batchReasonAll").disabled = false;
+  renderBatch();
+}
+
+async function saveOne(it) {
+  if (!it.prompt.trim() || it.saved) return;
+  try {
+    const thumb = await CloReason.makeThumb(it.image);
+    await CloDB.add({
+      image: it.image, thumb,
+      srcUrl: it.srcUrl, pageUrl: it.pageUrl,
+      category: it.category, categoryLabel: it.categoryLabel,
+      mode: it.mode,
+      prompts: { [it.mode]: it.prompt.trim() },
+      tags: it.chosen.slice(),
+    });
+    it.saved = true; it.status = "saved";
+    renderBatch();
+  } catch (e) {
+    it.status = "err"; it.error = "保存失败：" + (e.message || e);
+    renderBatch();
+  }
+}
+async function saveAll() {
+  const list = batch.items.filter((i) => (i.prompt || "").trim() && !i.saved);
+  if (!list.length) return;
+  $("batchSaveAll").disabled = true;
+  setStatus("batchStatus", `保存中… 0/${list.length}`);
+  let done = 0;
+  for (const it of list) {
+    await saveOne(it);
+    done++;
+    setStatus("batchStatus", `保存中… ${done}/${list.length}`);
+  }
+  setStatus("batchStatus", `已全部保存 ${done}/${list.length} ✓`, false, true);
+  renderBatch();
 }
 
 // ---------- 设置 ----------
@@ -202,23 +467,48 @@ async function saveConfig() {
 
 // ---------- 通用 ----------
 function setStatus(id, msg, err, ok) {
-  const el = $(id); el.textContent = msg;
+  const el = $(id); if (!el) return;
+  el.textContent = msg;
   el.classList.toggle("err", !!err); el.classList.toggle("ok", !!ok);
+}
+function updateBatchModeHint() {
+  const el = document.getElementById("batchCurMode");
+  if (el) el.textContent = MODE_LABEL[state.mode] || state.mode;
 }
 function bind() {
   $("modes").addEventListener("click", (e) => {
     const b = e.target.closest(".seg"); if (!b) return;
     document.querySelectorAll(".seg").forEach((s) => s.classList.remove("on"));
     b.classList.add("on"); state.mode = b.dataset.mode;
+    updateBatchModeHint();
   });
-  $("reasonBtn").onclick = doReason;
-  // 中文输出开关：从 localStorage 恢复 & 变更时持久化
+  // 并发数选择器：从 localStorage 恢复 + 变更时记忆
   try {
-    const saved = localStorage.getItem("clo_langZh") === "1";
+    const savedConc = localStorage.getItem("clo_batchConc");
+    const concSel = document.getElementById("batchConc");
+    if (concSel) {
+      if (savedConc && ["1","2","3","5","8"].includes(savedConc)) concSel.value = savedConc;
+      concSel.addEventListener("change", (e) => {
+        localStorage.setItem("clo_batchConc", e.target.value);
+      });
+    }
+  } catch {}
+  $("reasonBtn").onclick = doReason;
+  try {
+    // 提示词语言：默认中文（键不存在时视为中文）
+    const savedLang = localStorage.getItem("clo_langZh");
     if ($("langZh")) {
-      $("langZh").checked = saved;
+      $("langZh").checked = savedLang === null ? true : savedLang === "1";
       $("langZh").addEventListener("change", (e) => {
         localStorage.setItem("clo_langZh", e.target.checked ? "1" : "0");
+      });
+    }
+    // 标签中英：默认中文（键不存在时视为中文）
+    const savedTag = localStorage.getItem("clo_tagZh");
+    if ($("tagZh")) {
+      $("tagZh").checked = savedTag === null ? true : savedTag === "1";
+      $("tagZh").addEventListener("change", (e) => {
+        localStorage.setItem("clo_tagZh", e.target.checked ? "1" : "0");
       });
     }
   } catch {}
@@ -232,11 +522,17 @@ function bind() {
       if (!r || !r.ok) setStatus("reasonStatus", "无法启动点选：" + ((r && r.error) || "未知"), true);
     });
   };
+  $("multiPickBtn").onclick = () => {
+    setStatus("reasonStatus", "批量选图已激活，请到网页勾选图片…");
+    chrome.runtime.sendMessage({ type: "start-multi-pick" }, (r) => {
+      if (!r || !r.ok) setStatus("reasonStatus", "无法启动批量选图：" + ((r && r.error) || "未知"), true);
+    });
+  };
   $("addCatBtn").onclick = addCategory;
   $("newCatInput").addEventListener("keydown", (e) => { if (e.key === "Enter") addCategory(); });
   $("tagInput").addEventListener("keydown", (e) => {
     if (e.key !== "Enter") return;
-    const v = e.target.value.trim().toLowerCase();
+    const v = e.target.value.trim();
     if (v && !state.chosen.includes(v)) { state.chosen.push(v); renderChosen(); }
     e.target.value = "";
   });
@@ -252,4 +548,14 @@ function bind() {
   $("toggleSettings").onclick = () => $("settings").classList.toggle("hidden");
   $("provSel").onchange = (e) => toggleRemote(e.target.value);
   $("saveCfg").onclick = saveConfig;
+
+  // 批量
+  $("batchReasonAll").onclick = reasonAll;
+  $("batchSaveAll").onclick = saveAll;
+  $("batchExit").onclick = exitBatch;
+  $("batchAdd").onclick = () => {
+    chrome.runtime.sendMessage({ type: "start-multi-pick" }, (r) => {
+      if (!r || !r.ok) setStatus("batchStatus", "无法启动批量选图：" + ((r && r.error) || "未知"), true);
+    });
+  };
 }

@@ -9,9 +9,13 @@
 <body>
   <aside class="side">
     <div class="logo">服装资产库</div>
+    <div class="view-switch">
+      <button id="viewClothing" class="view-btn on">👗 服装</button>
+      <button id="viewFull" class="view-btn">🖼️ 全图</button>
+    </div>
     <input id="search" class="search" placeholder="搜索提示词 / 标签…" />
     <nav class="nav">
-      <div class="nav-title">大类</div>
+      <div class="nav-title cat-nav-title">大类</div>
       <div id="catNav" class="nav-list"></div>
       <div class="nav-title">标签</div>
       <div id="tagNav" class="nav-list tagcloud"></div>
@@ -28,6 +32,7 @@
           <option value="clothing_only">纯服装</option>
           <option value="with_model">带模特</option>
           <option value="ghost_mannequin">假人展示</option>
+          <option value="full_scene">反推全图</option>
         </select>
       </div>
     </header>

@@ -21,9 +21,9 @@ function saveConfig(cfg) {
   fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2));
 }
 
-async function runReason(cfg, imageBase64, mode, lang) {
+async function runReason(cfg, imageBase64, mode, lang, tagLang) {
   const provider = cfg.provider || "cli";
-  const opts = { lang };
+  const opts = { lang, tagLang };
   if (provider === "cli") return cli.reason(imageBase64, mode, { ...(cfg.cli || {}), ...opts });
   if (provider === "openai") return remote.openai(imageBase64, mode, { ...(cfg.openai || {}), ...opts });
   if (provider === "anthropic") return remote.anthropic(imageBase64, mode, { ...(cfg.anthropic || {}), ...opts });
@@ -95,10 +95,11 @@ const server = http.createServer(async (req, res) => {
       const body = JSON.parse(await readBody(req));
       const mode = MODE_KEYS.includes(body.mode) ? body.mode : "clothing_only";
       const lang = body.lang === "zh" ? "zh" : "en";
+      const tagLang = body.tagLang === "en" ? "en" : "zh"; // 默认中文
       if (!body.imageBase64) return sendJson(res, 400, { ok: false, error: "缺少 imageBase64" });
       const cfg = loadConfig();
       const t0 = Date.now();
-      const result = await runReason(cfg, body.imageBase64, mode, lang);
+      const result = await runReason(cfg, body.imageBase64, mode, lang, tagLang);
       return sendJson(res, 200, { ok: true, provider: cfg.provider, tookMs: Date.now() - t0, ...result });
     } catch (e) {
       return sendJson(res, 500, { ok: false, error: e.message });

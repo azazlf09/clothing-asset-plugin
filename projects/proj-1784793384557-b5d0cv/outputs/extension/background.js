@@ -71,6 +71,62 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
 
+  // 侧边栏「批量选图」：激活多选模式
+  if (msg.type === "start-multi-pick") {
+    (async () => {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tab || tab.id == null) return sendResponse({ ok: false, error: "无活动标签页" });
+      try {
+        await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["content.js"] });
+        await chrome.tabs.sendMessage(tab.id, { type: "multi-pick-on" });
+        sendResponse({ ok: true });
+      } catch (e) {
+        sendResponse({ ok: false, error: String(e.message || e) });
+      }
+    })();
+    return true;
+  }
+
+  // 多选完成：把 N 张图追加到 pendingBatch（不覆盖已有），供侧边栏消费
+  if (msg.type === "picked-batch") {
+    const newItems = (msg.items || []).map((it) => ({
+      dataUrl: it.dataUrl || "",
+      srcUrl: it.srcUrl || "",
+      pageUrl: msg.pageUrl || "",
+    }));
+    (async () => {
+      const { pendingBatch } = await chrome.storage.session.get("pendingBatch");
+      const existing = (pendingBatch && pendingBatch.items) || [];
+      await chrome.storage.session.set({
+        pendingBatch: { items: existing.concat(newItems), pageUrl: msg.pageUrl || "", ts: Date.now() },
+      });
+      if (sender && sender.tab && sender.tab.id != null) {
+        chrome.sidePanel.open({ tabId: sender.tab.id }).catch(() => {});
+      }
+      sendResponse && sendResponse({ ok: true, count: existing.length + newItems.length });
+    })();
+    return true;
+  }
+
+  // hover chip 点击「+加入批量」：累积单张到 pendingBatch，回传当前总数（不打开侧边栏）
+  if (msg.type === "add-to-batch") {
+    const item = msg.item || {};
+    (async () => {
+      const { pendingBatch } = await chrome.storage.session.get("pendingBatch");
+      const existing = (pendingBatch && pendingBatch.items) || [];
+      const next = existing.concat([{
+        dataUrl: item.dataUrl || "",
+        srcUrl: item.srcUrl || "",
+        pageUrl: msg.pageUrl || "",
+      }]);
+      await chrome.storage.session.set({
+        pendingBatch: { items: next, pageUrl: msg.pageUrl || "", ts: Date.now() },
+      });
+      sendResponse({ ok: true, count: next.length });
+    })();
+    return true;
+  }
+
   // content.js 取到图后：暂存供侧边栏消费；open=true 时顺带打开侧边栏（hover 反推框）
   if (msg.type === "picked-image") {
     chrome.storage.session.set({

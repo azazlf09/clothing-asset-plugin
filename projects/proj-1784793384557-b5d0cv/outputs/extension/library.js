@@ -1,8 +1,9 @@
 // 资产库页逻辑
 const $ = (id) => document.getElementById(id);
-const MODE_LABEL = { clothing_only: "纯服装", with_model: "带模特", ghost_mannequin: "假人展示" };
+const MODE_LABEL = { clothing_only: "纯服装", with_model: "带模特", ghost_mannequin: "假人展示", full_scene: "反推全图" };
+const FULL_MODES = new Set(["full_scene"]); // 归"全图"视图的档位
 let ALL = [];
-let filter = { cat: "", tag: "", mode: "", q: "" };
+let filter = { view: "clothing", cat: "", tag: "", mode: "", q: "" };
 
 init();
 async function init() {
@@ -12,8 +13,19 @@ async function init() {
   bind();
 }
 
+// 判断一条资产归属哪个视图（服装 or 全图）
+function assetView(it) {
+  const modes = Object.keys(it.prompts || {});
+  const primary = it.mode || modes[0] || "clothing_only";
+  return FULL_MODES.has(primary) ? "full" : "clothing";
+}
+
+function byView() {
+  return ALL.filter((it) => assetView(it) === filter.view);
+}
+
 function apply() {
-  return ALL.filter((it) => {
+  return byView().filter((it) => {
     if (filter.cat && it.category !== filter.cat) return false;
     if (filter.tag && !(it.tags || []).includes(filter.tag)) return false;
     if (filter.mode && !(it.prompts && it.prompts[filter.mode])) return false;
@@ -26,24 +38,34 @@ function apply() {
 }
 
 function renderNav() {
-  // 大类
+  const scope = byView();
+  // 大类（仅"服装"视图显示）
   const cats = {};
-  ALL.forEach((it) => { cats[it.category] = cats[it.category] || { label: it.categoryLabel || it.category, n: 0 }; cats[it.category].n++; });
+  scope.forEach((it) => { cats[it.category] = cats[it.category] || { label: it.categoryLabel || it.category, n: 0 }; cats[it.category].n++; });
   const catNav = $("catNav");
+  const catTitle = document.querySelector(".cat-nav-title");
+  const showCat = filter.view === "clothing";
+  catTitle.classList.toggle("hidden", !showCat);
   catNav.innerHTML = "";
-  catNav.appendChild(navItem("全部", ALL.length, filter.cat === "", () => { filter.cat = ""; refresh(); }));
-  Object.entries(cats).forEach(([val, o]) =>
-    catNav.appendChild(navItem(o.label, o.n, filter.cat === val, () => { filter.cat = val; refresh(); }))
-  );
+  if (showCat) {
+    catNav.appendChild(navItem("全部", scope.length, filter.cat === "", () => { filter.cat = ""; refresh(); }));
+    Object.entries(cats).forEach(([val, o]) =>
+      catNav.appendChild(navItem(o.label, o.n, filter.cat === val, () => { filter.cat = val; refresh(); }))
+    );
+  }
   // 标签
   const tagMap = {};
-  ALL.forEach((it) => (it.tags || []).forEach((t) => (tagMap[t] = (tagMap[t] || 0) + 1)));
+  scope.forEach((it) => (it.tags || []).forEach((t) => (tagMap[t] = (tagMap[t] || 0) + 1)));
   const tagNav = $("tagNav");
   tagNav.innerHTML = "";
   Object.entries(tagMap).sort((a, b) => b[1] - a[1]).forEach(([t, n]) =>
     tagNav.appendChild(navItem(t, n, filter.tag === t, () => { filter.tag = filter.tag === t ? "" : t; refresh(); }))
   );
-  $("count").textContent = ALL.length;
+  $("count").textContent = scope.length;
+
+  // 视图按钮态
+  $("viewClothing").classList.toggle("on", filter.view === "clothing");
+  $("viewFull").classList.toggle("on", filter.view === "full");
 }
 function navItem(label, n, on, onClick) {
   const el = document.createElement("div");
@@ -59,18 +81,19 @@ function render() {
   grid.innerHTML = "";
   $("empty").classList.toggle("hidden", items.length > 0);
   const crumbParts = [];
-  if (filter.cat) crumbParts.push(ALL.find((i) => i.category === filter.cat)?.categoryLabel || filter.cat);
+  crumbParts.push(filter.view === "full" ? "全图" : "服装");
+  if (filter.cat) crumbParts.push(byView().find((i) => i.category === filter.cat)?.categoryLabel || filter.cat);
   if (filter.tag) crumbParts.push("#" + filter.tag);
-  $("crumb").textContent = crumbParts.length ? crumbParts.join(" · ") : "全部资产";
+  $("crumb").textContent = crumbParts.join(" · ");
 
   items.forEach((it) => {
     const cell = document.createElement("div");
     cell.className = "cell";
-    const firstMode = Object.keys(it.prompts || {})[0];
+    const firstMode = it.mode || Object.keys(it.prompts || {})[0];
     cell.innerHTML = `
       <div class="cell-img"><img loading="lazy" src="${it.thumb || it.image}" alt=""></div>
       <div class="cell-body">
-        <div class="cell-cat">${it.categoryLabel || it.category}</div>
+        <div class="cell-cat">${it.categoryLabel || it.category}${firstMode ? ' · ' + (MODE_LABEL[firstMode] || firstMode) : ''}</div>
         <div class="cell-tags">${(it.tags || []).map((t) => "#" + t).join(" ") || "—"}</div>
       </div>
       <div class="cell-copy">
@@ -87,6 +110,12 @@ function render() {
 }
 
 function refresh() { renderNav(); render(); }
+function switchView(v) {
+  if (filter.view === v) return;
+  filter.view = v;
+  filter.cat = ""; filter.tag = "";
+  refresh();
+}
 
 // ---------- 详情 ----------
 function openModal(it) {
@@ -144,4 +173,6 @@ function bind() {
   $("modalClose").onclick = closeModal;
   $("modal").querySelector(".modal-mask").onclick = closeModal;
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
+  $("viewClothing").onclick = () => switchView("clothing");
+  $("viewFull").onclick = () => switchView("full");
 }

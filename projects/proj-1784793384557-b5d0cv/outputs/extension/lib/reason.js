@@ -11,12 +11,17 @@
     }
   }
 
-  // imageBase64: 纯 base64 或 dataURL 都可（server 会剥离前缀）；lang: "en" | "zh"
-  async function reason(imageBase64, mode, lang) {
+  // imageBase64: 纯 base64 或 dataURL 都可（server 会剥离前缀）；lang: prompt 语言 "en"|"zh"；tagLang: 标签语言 "en"|"zh"(默认 zh)
+  async function reason(imageBase64, mode, lang, tagLang) {
     const r = await fetch(BASE + "/reason", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ imageBase64, mode, lang: lang === "zh" ? "zh" : "en" }),
+      body: JSON.stringify({
+        imageBase64,
+        mode,
+        lang: lang === "zh" ? "zh" : "en",
+        tagLang: tagLang === "en" ? "en" : "zh",
+      }),
     });
     const j = await r.json();
     if (!j.ok) throw new Error(j.error || "反推失败");

@@ -73,3 +73,56 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .banner-help.hidden{display:none}
 .banner-help code{background:#fff;padding:1px 5px;border-radius:4px;
   border:1px solid #ffd8a8;font-size:11px;word-break:break-all}
+
+/* ---------- 批量模式：纵向卡片流 ---------- */
+.batch-header{display:flex;justify-content:space-between;align-items:center;padding:6px 2px 10px}
+.batch-header .cnt{font-size:13px;font-weight:600;color:var(--ink)}
+.batch-header .cnt em{color:var(--brand);font-style:normal;margin:0 3px}
+.batch-actions{display:flex;gap:6px}
+.batch-actions button{padding:6px 12px;font-size:12.5px}
+.batch-list{display:flex;flex-direction:column;gap:10px}
+.bcard{background:var(--card);border-radius:var(--radius);padding:10px;box-shadow:0 1px 2px rgba(0,0,0,.04);
+  border:1px solid transparent;transition:.15s}
+.bcard.done{border-color:#c8f2d4}
+.bcard.err{border-color:#ffd0d0}
+.bcard.running{border-color:#d5d2ff}
+.bcard-top{display:flex;gap:10px;align-items:flex-start}
+.bcard-thumb{width:64px;height:80px;flex:0 0 64px;border-radius:8px;overflow:hidden;background:#fafafa;
+  border:1px solid var(--line);display:flex;align-items:center;justify-content:center}
+.bcard-thumb img{width:100%;height:100%;object-fit:cover}
+.bcard-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+.bcard-row1{display:flex;align-items:center;gap:6px;justify-content:space-between}
+.bcard-idx{font-size:11px;color:var(--sub);flex:0 0 auto}
+.bcard-sel{padding:3px 6px;font-size:11.5px;border:1px solid var(--line);border-radius:7px;background:#fff;
+  color:var(--ink);flex:1;min-width:0}
+.bcard-del{background:transparent;color:var(--sub);padding:3px 6px;font-size:14px;line-height:1}
+.bcard-del:hover{color:var(--bad)}
+.bcard-state{font-size:11.5px;color:var(--sub);min-height:14px}
+.bcard-state.err{color:var(--bad)}
+.bcard-state.ok{color:var(--ok)}
+.bcard-prompt{width:100%;border:1px solid var(--line);border-radius:8px;padding:7px 9px;font:inherit;
+  color:var(--ink);background:#fff;resize:vertical;line-height:1.5;margin-top:6px;font-size:12.5px}
+.bcard-prompt:focus{outline:none;border-color:var(--brand)}
+.bcard-prompt.hidden{display:none}
+.bcard-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.bcard-tags .tag{padding:2px 8px;border-radius:12px;font-size:11px;cursor:pointer;
+  border:1px solid var(--line);background:#fff}
+.bcard-tags .tag.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+.bcard-btns{display:flex;gap:6px;margin-top:8px}
+.bcard-btns button{padding:5px 10px;font-size:11.5px;border-radius:7px}
+.bcard-btns .primary{background:var(--brand);color:#fff}
+.bcard-btns .save-ok{background:#c8f2d4;color:#0a7c33}
+
+/* 批量态下正常单张 UI 折叠 */
+.single-only.hidden{display:none}
+.batch-wrap.hidden{display:none}
+
+/* 批量元信息栏：当前档位提示 + 并发数选择 */
+.batch-meta{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:8px 10px;margin-top:8px;background:#eef1ff;border-radius:8px;font-size:12px}
+.batch-mode-hint{color:var(--ink)}
+.batch-mode-hint em{font-style:normal;color:var(--brand);font-weight:600}
+.batch-mode-hint .sub{margin-left:4px;font-size:11px}
+.batch-conc{display:flex;align-items:center;gap:6px;color:var(--sub);font-size:11.5px;white-space:nowrap}
+.batch-conc .sel.small{padding:3px 6px;font-size:11.5px;border-radius:6px;
+  border:1px solid var(--line);background:#fff;color:var(--ink)}

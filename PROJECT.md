@@ -266,6 +266,107 @@
 - **动作**：回退 M9 后重新提交，让 HEAD 干净停在「M7 自启动 + M8 教程与分发包」状态。
 - **入库**：`使用教程.md` / `使用教程.txt` / `服装资产库插件-v0.1.0.zip`（3 文件，从 M9 恢复的 M8 产物）+ PROJECT.md 增量。
 
+### M11 · 批量反推 + 全图档 + 中文标签 + 库分视图（2026-07-28）✅
+按用户新一轮 8 条思路（生图 8 跳过），一次贯穿五层：
+
+| 层 | 文件 | 关键改动 |
+|---|---|---|
+| Prompt | `server/prompts.js` | 新增第 4 档 `full_scene`（自然描述整张图，不带电商收束句）；`suggestedTags` 输出默认改为**中文短标签**（2-4 字） |
+| 内容脚本 | `extension/content.js` | 新增**多选模式**：点图勾选/取消（绿色描边+计数），Esc 取消 / Enter 完成 / 按钮完成 → 一次回传所有选中图 |
+| 后台 | `extension/background.js` | 新增 `start-multi-pick`（激活多选模式）+ `picked-batch`（把 N 张图存入 `pendingBatch` + 自动开侧边栏） |
+| 侧边栏 | `sidepanel.{html,css,js}` | ① 段控按钮加第 4 档「反推全图」；② 单张区块用 `.single-only` 标记，批量态自动折叠；③ 批量态渲染**纵向卡片流**（每张卡片：缩略图/序号/大类下拉/移除/进度/独立提示词框/建议标签/重推/单张保存）；④ 顶部一次「反推全部」按 `CONCURRENCY=3` 并发跑；⑤ 一键「全部保存」 |
+| 资产库 | `library.{html,css,js}` | 顶部加**服装 / 全图**视图切换：`full_scene` 归"全图"，其余归"服装"；切换视图会自动隐藏「大类」导航（全图视图不显示大类）；卡片头部展示大类·档位；modeFilter 下拉加"反推全图"项 |
+
+**未做（用户明确跳过）**：生图。
+
+**决策依据（本轮讨论）**：
+- 批量 UI 采用**纵向卡片流**（对比方案：左右对照 / tab 切换）—— 侧边栏窄，纵向卡片视线永远在"图→词"一列上，最自然。
+- 批量反推采用**一键并发**（并发数 3，避 CLI 排队卡死）+ 每张保留独立「重新反推」入口（作为失败重试和改档位后的兜底）。
+- 中文标签只影响新反推数据；已入库的英文标签不动（用户明确"以后如需再迁移"），DB 无需改 schema。
+
+**待用户手动**（受工具环境限制，本轮无 shell 通道）：
+1. `taskkill /F /IM node.exe` 清进程 → `cd outputs/server && node server.js` 重启
+2. Chrome 扩展页 **重载** `outputs/extension/`（HTML/JS 全改了）
+3. Git 提交建议 message：`feat: 批量反推 + 反推全图档 + 中文标签 + 库分视图（M11）`
+
+---
+
+### M12 · 4 条反馈修复（2026-07-28）✅
+
+针对用户 M11 上线后 4 条反馈：
+
+| 反馈 | 根因 | 修复 |
+|---|---|---|
+| ①滑动预览时 hover 反推小框 1 秒后消失、抢不到点击 | chip 定位在图片**内部**，鼠标从图片移到 chip 途中触发 mouseout；hideTimer 只有 160ms 缓冲 | `content.js`：chip 改到图片**外部**（上方，放不下退到内部左上），hideTimer 加长到 300ms，mouseout 时增加 `chip.contains(relatedTarget)` 判空；同时 scroll/resize 时跟随 chipTarget 重定位 |
+| ②hover 反推框适配多图连点、点一下加入待反推 | 原点击直接送单张并强制开侧边栏，一次只能加一张 | chip 文案改为「+ 加入批量」；新增 background 消息 `add-to-batch`（追加到 pendingBatch，不打开侧边栏）；chip 点击后显示「已加入 ✓（共 N 张）」并 1.2s 后恢复可再点；fab 上加实时**批量计数徽章**（session storage 变化自动刷新）；侧边栏 `consumeBatch` 改为**追加而非覆盖**，且按 srcUrl/image 去重 |
+| ③full_scene 档提示词仍陷入服装列举模板（cap→top→bottom→shoes 顺序） | prompt 只说"描述整张图"，但未显式禁止服装列举顺序；且和其他三档共享一个 header 语气，模型倾向套模板 | `prompts.js`：full_scene 档前置一句 `THIS IS NOT A CLOTHING-CATALOG MODE. IGNORE any garment-listing template you have used before.`；显式列 FORBIDDEN 清单（不许头到脚列单品、不许分块 (1)(2)(3)、不许加电商收束句、不许忽略环境光影相机）；MUST include 里把服装降级为"a natural short phrase, NOT a head-to-toe checklist"；要求 ONE continuous paragraph |
+| ④标签仍显示英文，希望可切换（默认中文） | prompt 语言（lang）和标签语言绑在一起，用户勾"输出纯中文提示词"才给中文标签；未勾时给英文 | 拆出独立参数 `tagLang`，贯穿：`prompts.js.buildInstruction(mode,path,lang,tagLang)` → `server.js` 读 `body.tagLang` → `cli.js` 传 `opts.tagLang` → `remote.js` `instructionNoPath(mode,lang,tagLang)` → `reason.js.reason(image,mode,lang,tagLang)` → 侧边栏加复选框 `#tagZh`（**默认勾选**）+ localStorage `clo_tagZh`（键不存在时视为中文，符合"默认中文"约定） |
+
+**其他细节**：
+- 新增 `#__clo_fab .badge` 圆形徽章（右上角，靠边翻转），show/hide 靠 storage listener
+- 单张 chip 定位算法：优先图片上方 6px 处，放不下就退到图片内部左上角 6px
+- 批量列表去重：以 srcUrl 为主键 + image dataUrl 兜底
+
+**待用户手动**（本轮工具无 shell）：
+1. `taskkill /F /IM node.exe` → `cd outputs/server && node server.js` 重启
+2. Chrome 扩展页 **重载** `outputs/extension/`（content/background/sidepanel/html/js 都改了）
+3. Git 提交 message：`fix: 修 hover chip / 批量累积 / full_scene 脱模板 / 标签独立中英（M12）`
+
+## 八·补 · M13 批量三改（2026-07-28 追加）
+
+### 反馈来源（M12 试用后）
+1. 并发数应为可选（原硬编码 3）
+2. 一键反推**不跟随当前档位**：选了「反推全图」，批量反推仍按加入卡片时固化的「纯服装」执行
+3. 勾选「标签用中文（默认）」后仍出现英文标签（如 `menswear tweed herringbone overcoat`）
+
+### 根因
+
+| 反馈 | 根因 |
+|---|---|
+| 1 | `CONCURRENCY = 3` 是模块级常量，无 UI |
+| 2 | `consumeBatch()` 在加入卡片时把 `it.mode = state.mode` 固化，之后切换档位不同步；`reasonAll` 未在触发前广播新档位 |
+| 3 | `TAGS_INSTRUCTION.zh` 位置在 mode 模板末尾，被 `lang=en` 的英文语境冲淡；且 `normalize` 无兜底 |
+
+### 修复
+
+| 层 | 文件 | 关键改动 |
+|---|---|---|
+| Prompt | `server/prompts.js` | `TAGS_INSTRUCTION.zh` 强化：`"suggestedTags" 字段的取值必须是中文!!!` + 合法/非法示例；tagLang 段用 `===== TAGS LANGUAGE (independent of the prompt language) =====` 分割包裹，与 prompt 语言彻底解耦 |
+| Provider | `cli.js` / `remote.js` | `normalize` 新增 `tagLang` 形参 + 60+ 词的英中兜底词表 `EN2ZH_TAG`（vintage→复古、tweed→粗花呢、herringbone→人字纹、menswear→男装 等）；`tagLang=zh` 时全英标签强制映射，映射不到直接丢弃（宁缺勿滥） |
+| Server | 无变更 | 已有 `tagLang` 透传 |
+| 侧边栏 | `sidepanel.html/.css/.js` | 批量区新增 `.batch-meta`：**当前档位提示 + 并发数下拉（1/2/3/5/8，localStorage 记忆）**；档位切换时 `updateBatchModeHint()` 同步；`reasonAll` 前把 `state.mode` **广播到所有非 saved 卡片**；单卡「反推」按钮触发前也同步一次；`reasonOne` 不再从 state.mode 读，而是用 `it.mode`（避免运行中切换档位造成错乱） |
+
+### 关键设计取舍
+- **兜底词表宁缺勿滥**：`tagLang=zh` 时匹配不到英中映射的标签**直接丢弃**（不放英文进结果污染中文体验）。宁可少几个标签，也不让中英混杂。
+- **档位广播时机**：只在**触发反推的瞬间**（reasonAll 入口 / 单卡按钮 onclick）广播，避免"跟随档位实时变"造成用户预期错乱（已经反推完的卡片保持原档结果）。
+- **并发数默认值**：3 保留为推荐值，本地 CLI 建议 ≤3（sonnet 冷启动占用 API 通道），远程 provider 可 5-8。
+
+### 待用户手动（本轮工具无 shell）
+1. 重启 server 使新 prompts.js 生效：`taskkill /F /IM node.exe && cd outputs/server && node server.js`
+2. Chrome 扩展页**重载** `outputs/extension/`（sidepanel 的 html/css/js 都改了）
+3. Git 提交 message：`fix: 并发数UI + 批量档位广播 + 中文标签兜底词表（M13）`
+
+---
+
+## 八·补2 · M14 中文原生模板 + 滚轮修复（2026-07-28 追加）✅
+
+**根因定位（关键）**：用户反馈 M13 的"档位不生效 / 中文标签仍英文"——实测 `/health` 返回的 modes **缺 `full_scene`**，坐实是**上次改完 server 没重启，一直跑旧代码**（旧 prompts.js 无 full_scene 档 → 被兜底成纯服装模板；旧 cli.js 无中文词表）。重启后两者当场恢复正常。→ 教训写入长期记忆：**prompts.js/provider 改动后必须重启 server，否则全部白改**。
+
+**架构升级（用户判断正确并采纳）**：原链路是「英文模板 → 模型吐英文标签 → EN2ZH_TAG 词表翻译」，翻译层不稳（覆盖不全丢标签、译法僵）。改为**双语原生模板**：
+- `prompts.js` 拆出 `MODES_EN` + `MODES_ZH`（四档各一份原生中文指令）+ 中文 OUTPUT_CONTRACT；`buildInstruction` 按 lang 选模板，**默认 lang=zh**。
+- 勾选中文 → 直接走中文模板，模型**原生产出中文 prompt + 中文标签**，省掉翻译层。标签策略：**模型自由产出中文**（不限受控词表）。
+- EN2ZH_TAG 词表降级为纯兜底（仅模型偶尔吐英文时触发）。
+- 默认值：`langZh` / `tagZh` 复选框**均默认勾选**（localStorage 键不存在时视为中文）。
+
+**反馈4 修复（滚轮/拉伸回滚）**：`renderBatch` 全量重建拆成两级——`renderBatch`（结构变化时）+ `refreshCards`（反推中 tick 只更新状态文本/描边，**不重建 textarea/tags DOM**）→ 保住用户在提示词框里的滚动位置与手动拉伸高度。
+
+**联调实测（女2 · full_scene · lang=zh · CLI）**：`HTTP 200 · 25s · category=female`；prompt 为一整段原生中文整场景描述（非服装清单）；标签 `["日系","森系","秋冬","大地色","格纹","复古","针织背心","文艺"]` 全中文原生产出（"森系/大地色/文艺"等词表根本没有，证明原生优于翻译）。
+
+### 待用户手动
+1. **重启 server**（prompts.js 改了必须重启）：`taskkill /F /IM node.exe && cd outputs/server && node server.js` —— 已由本轮自动完成，若关机重启则靠自启动脚本
+2. Chrome 扩展页**重载** `outputs/extension/`（sidepanel html/js 都改了）
+3. Git 提交：`feat: 中文原生模板(四档)+默认中文+批量提示词框滚轮修复（M14）`
+
 ---
 
 ## 九、工作约定（本项目）
