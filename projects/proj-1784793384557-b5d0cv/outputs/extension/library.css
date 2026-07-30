@@ -27,6 +27,17 @@ body{margin:0;display:flex;min-height:100vh;background:var(--bg);color:var(--ink
 .tagcloud{flex-direction:row;flex-wrap:wrap;gap:6px}
 .tagcloud .nav-item{padding:4px 10px;border:1px solid var(--line);border-radius:14px;background:#fff}
 .tagcloud .nav-item.on{border-color:var(--brand)}
+/* Eagle 式标签三态 */
+.tag-chip{gap:4px}
+.tag-mark{font-weight:700;margin-right:2px}
+.tagcloud .tag-chip.include{border-color:var(--brand);background:#eceafd;color:var(--brand);font-weight:600}
+.tagcloud .tag-chip.include .n{color:var(--brand)}
+.tagcloud .tag-chip.exclude{border-color:var(--bad);background:#ffecea;color:var(--bad);text-decoration:line-through}
+.tagcloud .tag-chip.exclude .n{color:var(--bad);text-decoration:none}
+.tag-hint{font-size:10px;color:var(--sub);text-transform:none;letter-spacing:0;font-weight:400}
+.tag-clear{width:100%;margin-bottom:8px;padding:6px 10px;font:inherit;font-size:12px;
+  border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--bad);cursor:pointer}
+.tag-clear:hover{background:#ffecea;border-color:var(--bad)}
 .side-foot{font-size:12px;color:var(--sub);padding-top:12px;border-top:1px solid var(--line);margin-top:12px}
 
 /* 主区 */
@@ -76,6 +87,20 @@ body{margin:0;display:flex;min-height:100vh;background:var(--bg);color:var(--ink
 .btn.ghost{background:#f0f0f3;color:var(--ink)}
 .btn.danger{background:#ffeceb;color:var(--bad)}
 .btn.mini{padding:5px 10px;font-size:12px;background:#eceafd;color:var(--brand)}
+
+/* 详情内标签编辑 */
+.tag-edit-title{font-size:12px;color:var(--sub);margin:14px 0 6px;font-weight:600}
+.tag-edit-title .muted{font-weight:400}
+.tags.editable{margin:0 0 8px}
+.tags.editable .tag{display:inline-flex;align-items:center;gap:4px;padding-right:4px}
+.tag-x{border:none;background:transparent;color:var(--sub);cursor:pointer;font-size:14px;line-height:1;
+  padding:0 2px;border-radius:50%}
+.tag-x:hover{color:var(--bad);background:rgba(255,59,48,.12)}
+.tag-add-row{margin-bottom:6px}
+.tag-add-inp{width:100%;border:1px solid var(--line);border-radius:9px;padding:8px 10px;font:inherit}
+.tag-add-inp:focus{outline:none;border-color:var(--brand)}
+.btn.primary{background:var(--brand);color:#fff}
+.modal-actions{flex-wrap:wrap}
 
 @media(max-width:640px){.modal-grid{grid-template-columns:1fr}}
 .toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#1d1d1f;color:#fff;

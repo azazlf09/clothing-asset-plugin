@@ -369,6 +369,37 @@
 
 ---
 
+## 八·补3 · M15 反推提示词一键复制/清除（2026-07-28）✅
+
+- **单张反推区**：提示词框下加「复制提示词」+「清除提示词」，仅在有内容时可用。
+- **批量卡片**：每张卡独立「复制提示词 / 清除提示词」。
+- **批量区顶部**：「一键复制提示词」（拼接所有已反推卡片，每段带 `【#序号】` + 分隔线）+「一键清除提示词」（清空所有卡）。
+- 复制走 `navigator.clipboard` + 隐藏 textarea `execCommand` 双兜底。命名统一为「复制提示词 / 清除提示词」。
+- **已推 GitHub**：`azazlf09/clothing-asset-plugin`（Public）。Git `f7a5c80`。仓库名不能纯中文（会转成空 slug）；本仓库已 `git config --local http.proxy ""` 禁用代理直连。
+
+## 八·补4 · M16 批量按钮排版 + 库内标签编辑 + 库内词+图复制（2026-07-29）✅
+
+| # | 需求 | 实现 |
+|---|---|---|
+| 1 | 批量反推按钮竖排难点击、排版差 | `sidepanel.css`：`.batch-header` 改纵向（计数独占一行），`.batch-actions` 改 **2 列等宽网格**（`grid-template-columns:repeat(2,1fr)`），「一键反推」`grid-column:1/-1` 独占整行更醒目。按钮加大内边距（8px）触控友好。布局：反推(整行)→复制\|清除→保存\|加图→退出 |
+| 2 | 资产库只能预览/搜索/复制，无法改标签 | `library.html/js/css`：详情弹窗标签区改**可编辑**——每个标签带 `×` 删除，下方加输入框回车添加；`addTag/removeTag → CloDB.put` 写回 IndexedDB 并同步 ALL + `refresh()` 刷新导航。用 `currentItem` 引用当前打开项 |
+| 3 | 库里无法同时复制提示词+图片 | 详情弹窗加「复制全部提示词」+「提示词+图片」两个按钮；`joinPrompts(it)` 拼接多档位（带档位标注）；复用已有 `copyWordImg`（ClipboardItem 图文一起写，失败降级只复制文字）。列表卡片原有「词+图」保留 |
+
+**纯前端改动**（HTML/CSS/JS），不涉及 server，`node --check` 语法通过。待用户重载 `outputs/extension/` 验证。
+
+---
+
+## 八·补5 · M17 库内词+图复制修复 + 标签多选排除筛选（2026-07-30）✅
+
+| # | 反馈 | 根因 | 实现 |
+|---|---|---|---|
+| 1 | 库里「提示词+图片」总弹「图片复制不支持，已复制提示词」 | `copyWordImg` 直接把 `data:` 图 `fetch` 成 blob 塞进 `ClipboardItem`，Chrome 剪贴板只稳定接受 **image/png**，jpeg/webp/污染的 blob 类型都会被拒 → 落到 catch | 新增 `imageToPngBlob()`：用 `Image`+`canvas` 把任意图统一重绘成 **PNG blob** 再写 `ClipboardItem({image/png, text/plain})`；失败才降级只复制提示词 |
+| 2 | 库需 Eagle 式标签筛选：多选 + 排除 | 原 `filter.tag` 是单选字符串 | 改 `filter.tagsInclude/tagsExclude`（两个 `Set`）。标签点击循环 **无→包含(蓝＋)→排除(红－划线)→无**（`cycleTag`）；`apply()` 包含=全命中 AND、排除=任一命中即淘汰；加「清除标签筛选（N）」按钮；面包屑显示 `#含 / -排`；切视图清空筛选 |
+
+**纯前端改动**（library.html/js/css），`node --check` 通过。待用户重载 `outputs/extension/` 验证。
+
+---
+
 ## 九、工作约定（本项目）
 
 - 本文件为唯一追踪源，**每次推进后立即更新第七节进度表 + 相关章节**。

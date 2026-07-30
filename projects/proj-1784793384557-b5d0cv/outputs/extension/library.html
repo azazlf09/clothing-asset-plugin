@@ -17,7 +17,8 @@
     <nav class="nav">
       <div class="nav-title cat-nav-title">大类</div>
       <div id="catNav" class="nav-list"></div>
-      <div class="nav-title">标签</div>
+      <div class="nav-title">标签 <span class="tag-hint">点击：包含→排除→取消</span></div>
+      <button id="tagClear" class="tag-clear hidden">清除标签筛选</button>
       <div id="tagNav" class="nav-list tagcloud"></div>
     </nav>
     <div class="side-foot"><span id="count">0</span> 项资产</div>
@@ -49,9 +50,15 @@
         <div class="modal-img"><img id="mImg" src="" alt="" /></div>
         <div class="modal-info">
           <div class="mi-row"><span id="mCat" class="badge"></span><span id="mDate" class="muted"></span></div>
-          <div id="mTags" class="tags"></div>
+          <div class="tag-edit-title">标签 <span class="muted">(点 × 删除，输入回车添加)</span></div>
+          <div id="mTags" class="tags editable"></div>
+          <div class="tag-add-row">
+            <input id="mTagInput" class="tag-add-inp" placeholder="输入标签回车添加…" />
+          </div>
           <div id="mPrompts"></div>
           <div class="modal-actions">
+            <button id="mCopyAll" class="btn primary">复制全部提示词</button>
+            <button id="mCopyAllImg" class="btn primary">提示词+图片</button>
             <a id="mSource" class="btn ghost" target="_blank">原页面</a>
             <button id="mDelete" class="btn danger">删除</button>
           </div>
