@@ -409,6 +409,17 @@
 
 ---
 
+## 八·补7 · M19 反推「转圈无反应」根因修复 + 一键诊断脚本（2026-07-31）✅
+
+- **背景**：分发给同事测试，反馈「侧边栏点反推无反应/转圈」，同事已装并登录 Claude CLI（排除前置环境）。
+- **真因（真 bug）**：`extension/lib/reason.js` 的所有 fetch **无超时控制**。当 server 端口占用但半死不活（进程僵死/CLI 卡住）时，fetch 永久挂起，UI 一直转圈；更糟的是 `health()` 卡住会阻塞 `init()` 里的 `await checkServer()`，连橙色横条都弹不出 → 表现为"点了没反应"。
+- **修复**：抽出 `fetchTimeout()`（AbortController）。`health`/`config` 短超时 4s（让横条尽快弹出），`reason` 长超时 200s（覆盖 CLI 冷启动仍设上限）。超时/连不上时抛明确中文错误，不再永久转圈。
+- **交付一键诊断脚本**：`server/scripts/诊断.bat`（ASCII wrapper，`-ExecutionPolicy Bypass` 绕执行策略）+ `diagnose.ps1`（**带 UTF-8 BOM**，否则 PowerShell 5.x 按 GBK 读中文崩溃——又一个中文编码坑）。逐环检测 Node/Claude CLI/端口 8787/health/真实反推，server 没起会自动用 vbs 拉起，断点用中文明确报出。
+- **教程**：`使用教程.txt` 新增 Q0——遇任何反推问题先双击 `诊断.bat`。
+- ⚠️ 新增踩坑：**`.ps1` 含中文必须带 UTF-8 BOM**，否则 Windows PowerShell 5.x 按 ANSI(GBK) 解析，中文乱码 + 括号被吞导致解析崩溃。Edit 工具会保留 BOM，但 Write 新建的 .ps1 无 BOM，需用 Node 补 `0xEF 0xBB 0xBF`。
+
+---
+
 ## 九、工作约定（本项目）
 
 - 本文件为唯一追踪源，**每次推进后立即更新第七节进度表 + 相关章节**。
